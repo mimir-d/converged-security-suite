@@ -99,9 +99,21 @@ func GenECCKey(curve int, password string, kmPubFile, kmPrivFile, bpmPubFile, bp
 func writePrivKeyToFile(k crypto.PrivateKey, f *os.File, password string) error {
 	var key *[]byte
 	b, err := x509.MarshalPKCS8PrivateKey(k)
+	if err != nil {
+		return err
+	}
 	bpemBlock := &pem.Block{
 		Bytes: b,
 	}
+	switch k.(type) {
+	case *rsa.PrivateKey:
+		bpemBlock.Type = "RSA PRIVATE KEY"
+	case *ecdsa.PrivateKey:
+		bpemBlock.Type = "ECDSA PRIVATE KEY"
+	default:
+		return fmt.Errorf("trying to write unknown key type")
+	}
+
 	bpem := pem.EncodeToMemory(bpemBlock)
 	if password != "" {
 		encKey, err := encryptPrivFile(&bpem, password)
@@ -127,6 +139,14 @@ func writePubKeyToFile(k crypto.PublicKey, f *os.File) error {
 	}
 	bpemBlock := &pem.Block{
 		Bytes: b,
+	}
+	switch k.(type) {
+	case *rsa.PublicKey:
+		bpemBlock.Type = "RSA PUBLIC KEY"
+	case *ecdsa.PublicKey:
+		bpemBlock.Type = "ECDSA PUBLIC KEY"
+	default:
+		return fmt.Errorf("trying to write unknown key type")
 	}
 	bpem := pem.EncodeToMemory(bpemBlock)
 	_, err = f.Write(bpem)
